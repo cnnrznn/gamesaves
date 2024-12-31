@@ -18,10 +18,6 @@ type driveStore struct {
 	client *http.Client
 }
 
-func (s *driveStore) Authorize() error {
-	return nil
-}
-
 func (s *driveStore) Upload(ctx context.Context, fn string, data []byte) error {
 	return nil
 }
@@ -31,21 +27,9 @@ func (s *driveStore) Download(ctx context.Context, fn string) ([]byte, error) {
 }
 
 func New(ctx context.Context, accessToken string) (store.Store, error) {
-	bs, err := os.ReadFile("credentials.json")
+	config, err := loadConfig()
 	if err != nil {
-		return nil, fmt.Errorf(
-			"unable to read client secret file: %v",
-			err,
-		)
-	}
-
-	// If modifying these scopes, delete your previously saved token.json.
-	config, err := google.ConfigFromJSON(bs, drive.DriveFileScope)
-	if err != nil {
-		return nil, fmt.Errorf(
-			"unable to parse client secret file to config: %v",
-			err,
-		)
+		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
 
 	if len(accessToken) == 0 {
@@ -63,4 +47,38 @@ func New(ctx context.Context, accessToken string) (store.Store, error) {
 	return &driveStore{
 		client: client,
 	}, nil
+}
+
+func Authorize(w http.ResponseWriter, r *http.Request) {
+	config, err := loadConfig()
+	if err != nil {
+		http.Error(
+			w,
+			fmt.Sprintf("failed to load config: %v", err),
+			http.StatusInternalServerError,
+		)
+	}
+	url := config.AuthCodeURL("", oauth2.AccessTypeOffline)
+	http.Redirect(w, r, url, http.StatusFound)
+}
+
+func loadConfig() (*oauth2.Config, error) {
+	bs, err := os.ReadFile("credentials.json")
+	if err != nil {
+		return nil, fmt.Errorf(
+			"unable to read client secret file: %v",
+			err,
+		)
+	}
+
+	// If modifying these scopes, delete your previously saved token.json.
+	config, err := google.ConfigFromJSON(bs, drive.DriveFileScope)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"unable to parse client secret file to config: %v",
+			err,
+		)
+	}
+
+	return config, nil
 }

@@ -8,13 +8,29 @@ import (
 )
 
 func HandleAuthorize(w http.ResponseWriter, r *http.Request) {
+	storeName := r.Header.Get("store")
 
+	switch storeName {
+	case "googledrive":
+		googledrive.Authorize(w, r)
+	default:
+		http.Error(
+			w,
+			"store not available for authorization",
+			http.StatusForbidden,
+		)
+	}
 }
 
 func HandleUpload(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		_ = r.Body.Close()
 	}()
+
+	if r.Method != http.MethodPost {
+		http.Error(w, "unsupported method", http.StatusMethodNotAllowed)
+		return
+	}
 
 	accessToken := r.Header.Get("access_token")
 	store := r.Header.Get("store")
