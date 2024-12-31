@@ -58,8 +58,22 @@ func Authorize(w http.ResponseWriter, r *http.Request) {
 			http.StatusInternalServerError,
 		)
 	}
-	url := config.AuthCodeURL("", oauth2.AccessTypeOffline)
+	url := config.AuthCodeURL("googledrive", oauth2.AccessTypeOffline)
 	http.Redirect(w, r, url, http.StatusFound)
+}
+
+func Exchange(ctx context.Context, code string) (*oauth2.Token, error) {
+	config, err := loadConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load config: %w", err)
+	}
+
+	token, err := config.Exchange(ctx, code, oauth2.AccessTypeOffline)
+	if err != nil {
+		return nil, fmt.Errorf("unable to retrieve token: %w", err)
+	}
+
+	return token, nil
 }
 
 func loadConfig() (*oauth2.Config, error) {
