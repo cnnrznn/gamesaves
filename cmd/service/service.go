@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -129,11 +130,25 @@ func main() {
 	http.HandleFunc("/authorize", HandleAuthorize)
 	http.HandleFunc("/oauth/code", HandleAuthCode)
 	http.HandleFunc("/upload", HandleUpload)
-	err := http.ListenAndServe(
-		":8080",
-		nil,
-	)
+
+	serverCert, err := tls.LoadX509KeyPair("server.crt", "server.key")
 	if err != nil {
 		log.Fatal(err)
+		return
+	}
+
+	server := &http.Server{
+		Addr: ":8443",
+		TLSConfig: &tls.Config{
+			Certificates: []tls.Certificate{serverCert},
+			ClientAuth:   tls.RequireAndVerifyClientCert,
+		},
+		Handler: http.DefaultServeMux,
+	}
+
+	err = server.ListenAndServeTLS("", "")
+	if err != nil {
+		log.Fatal(err)
+		return
 	}
 }
